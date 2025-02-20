@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Como Desinstalar e Reinstalar um Driver de Rede</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Como Desinstalar e Reinstalar um Driver de Rede no Gerenciador de Dispositivos (Dell ou Lenovo)</h1>
+
+        <h2>Objetivo</h2>
+        <p>Este guia descreve como desinstalar e reinstalar um driver de rede no Gerenciador de Dispositivos em computadores Dell ou Lenovo, útil para resolver problemas de conectividade ou atualizar drivers.</p>
+
+        <h2>Pré-requisitos</h2>
+        <ul>
+            <li>Acesso administrativo ao computador.</li>
+            <li>Sistema operacional Windows (Windows 7, 8, 10 ou 11).</li>
+            <li>Conexão alternativa (ex.: cabo USB ou outra rede) caso a conectividade seja perdida.</li>
+        </ul>
+
+        <h2>Passo a Passo</h2>
+
+        <h3>Parte 1: Desinstalação do Driver</h3>
+        <ol>
+            <li><strong>Abrir o Gerenciador de Dispositivos</strong><br>Pressione <strong>Windows + R</strong>, digite <code>devmgmt.msc</code> e pressione <strong>Enter</strong>.</li>
+            <li><strong>Localizar o Adaptador de Rede</strong><br>Expanda a seção <strong>Adaptadores de Rede</strong> e identifique o dispositivo (ex.: "Realtek PCIe GBE Family Controller").</li>
+            <li><strong>Desinstalar o Driver</strong><br>Clique com o botão direito no adaptador, selecione <strong>Desinstalar dispositivo</strong>, marque <strong>Excluir o software de driver</strong> (se disponível) e clique em <strong>Desinstalar</strong>.</li>
+            <li><strong>Aguardar a Conclusão</strong><br>O driver será removido, e o dispositivo pode desaparecer da lista ou aparecer como "Dispositivo desconhecido".</li>
+        </ol>
+
+        <h3>Parte 2: Reinstalação do Driver (Dell ou Lenovo)</h3>
+        <ol start="5">
+            <li><strong>Verificar Reinstalação Automática</strong><br>Reinicie o computador. O Windows pode reinstalar um driver padrão. Teste a conexão.</li>
+            <li><strong>Baixar o Driver Específico</strong>
+                <ul>
+                    <li><strong>Para Dell</strong>: Acesse <a href="https://www.dell.com/support">www.dell.com/support</a>, insira o <strong>Service Tag</strong>, localize "Rede" e baixe o driver.</li>
+                    <li><strong>Para Lenovo</strong>: Visite <a href="https://support.lenovo.com">support.lenovo.com</a>, use o número de série, filtre por "Rede" e baixe o driver.</li>
+                </ul>
+            </li>
+            <li><strong>Instalar o Driver</strong><br>Execute o arquivo <code>.exe</code> baixado ou, para <code>.zip</code>, use <strong>Atualizar driver</strong> no Gerenciador de Dispositivos apontando para a pasta extraída.</li>
+            <li><strong>Reiniciar o Computador</strong><br>Reinicie e teste a conectividade.</li>
+        </ol>
+
+        <div class="note-box">
+            <h3>Notas Adicionais</h3>
+            <ul>
+                <li>Baixe drivers compatíveis com sua versão do Windows (32 ou 64 bits).</li>
+                <li>Se a conexão for perdida, use um USB ou outra máquina para transferir o driver.</li>
+            </ul>
+        </div>
+
+        <div class="troubleshooting">
+            <h3>Solução de Problemas</h3>
+            <ul>
+                <li><strong>Driver não aparece</strong>: Verifique o BIOS/UEFI.</li>
+                <li><strong>Erro na desinstalação</strong>: Execute como administrador.</li>
+                <li><strong>Driver incorreto</strong>: Confirme o modelo do adaptador nas propriedades.</li>
+            </ul>
+        </div>
+
+        <footer>
+            <p>Data de Atualização: 20 de fevereiro de 2025</p>
+        </footer>
+    </div>
+</body>
+</html>
