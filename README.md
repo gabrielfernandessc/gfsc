@@ -10,6 +10,7 @@ Quem avisa primeiro no grupo, pontua. Site mobile-first do placar oficial da tur
 - **Missão especial Faustão** (+6), que só pode ser cumprida uma vez
 - **Previsão fracassada** (-2) com direito a tela tremendo 🤡
 - **Histórico** com "desfazer", **backup** (baixar/importar JSON) e botão **Enviar**, que manda a tabela formatada pro WhatsApp
+- **🕵️ Registro de alterações**: toda mudança de ponto, anúncio, participante, foto ou apelido aparece com quem fez, quando e de qual aparelho. No modo compartilhado o registro é gerado pelo servidor, então ninguém apaga nem forja pelo site. Cada aparelho escolhe "quem é você?" na primeira visita
 
 ## Pontuação
 
@@ -28,7 +29,8 @@ As regras e o placar inicial ficam em [`data.js`](data.js).
 ## Publicar na Vercel
 
 1. Em [vercel.com/new](https://vercel.com/new), importe este repositório (framework: **Other**, sem build). Cada push publica de novo sozinho.
-2. **Placar compartilhado (recomendado):** no projeto da Vercel, vá em **Storage → Create → Upstash (Redis)** e conecte ao projeto. Isso cria `KV_REST_API_URL` e `KV_REST_API_TOKEN` (ou `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`). Faça um redeploy.
+2. **Placar compartilhado (obrigatório pra todo mundo ver as mesmas fotos e pontos):** no projeto da Vercel, vá em **Storage → Create Database → Upstash for Redis** (ou qualquer Redis) e conecte ao projeto. Depois **Deployments → ⋯ → Redeploy**. A API aceita `KV_REST_API_URL`/`KV_REST_API_TOKEN`, `UPSTASH_REDIS_REST_URL`/`UPSTASH_REDIS_REST_TOKEN` (com ou sem prefixo) ou `REDIS_URL`.
+   - Pra conferir: abra `/api/state?diag=1` no site. Deve aparecer `"conectou": true`.
    - Com o banco: todo mundo vê o mesmo placar, as mesmas fotos e o mesmo histórico (atualiza sozinho a cada 15 s). O selo no topo mostra **AO VIVO**.
    - Sem o banco: o site funciona em **modo LOCAL**, salvando só no navegador de cada um.
 
@@ -51,6 +53,7 @@ index.html            páginas e telas (ranking, regras, histórico, sheets)
 styles.css            visual
 app.js                lógica, animações e sincronização
 data.js               placar oficial e regras
+registro.js           gera o registro de alterações (usado no site e na API)
 api/state.js          função serverless da Vercel (placar compartilhado via Redis)
 vercel.json           config da Vercel
 ```

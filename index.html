@@ -39,6 +39,7 @@
           <p class="hero-sub">O único campeonato onde a notícia ruim é uma ótima notícia.</p>
         </div>
 
+        <div class="sync-banner" id="syncBanner" hidden></div>
         <div class="stats" id="stats"></div>
 
         <div class="podium" id="podium"></div>
@@ -47,6 +48,8 @@
         <ol class="board" id="board"></ol>
         <button class="btn btn-add" id="addPlayer" type="button">＋ Adicionar participante</button>
         <p class="tip">Toque em alguém pra trocar foto, nome ou apelido.</p>
+
+        <button class="last-change" id="lastChange" type="button" hidden></button>
 
         <div class="mission-mini" id="missionMini"></div>
       </section>
@@ -75,11 +78,24 @@
       <section class="view" id="view-historico" data-view="historico" hidden>
         <div class="hero hero--small">
           <p class="kicker">Arquivo do plantão</p>
-          <h1>Histórico de <span class="hl">anúncios</span></h1>
-          <p class="hero-sub">Tudo que foi lançado pelo site. Errou? Dá pra desfazer.</p>
+          <h1>Histórico e <span class="hl">registro</span></h1>
+          <p class="hero-sub">Mexeu no placar? Fica registrado. Aqui não tem queima de arquivo.</p>
         </div>
         <p class="mode-note" id="modeNote"></p>
-        <ul class="history" id="history"></ul>
+        <p class="eu-info" id="euInfo"></p>
+
+        <div class="segmented" role="tablist">
+          <button type="button" class="is-on" data-sub="anuncios" role="tab">📣 Anúncios</button>
+          <button type="button" data-sub="registro" role="tab">🕵️ Registro <span class="count" id="logCount"></span></button>
+        </div>
+
+        <div data-subview="anuncios">
+          <ul class="history" id="history"></ul>
+        </div>
+        <div data-subview="registro" hidden>
+          <p class="log-intro">Toda alteração de ponto, anúncio, participante ou foto, com quem fez, quando e de qual aparelho. Ninguém consegue apagar esta lista pelo site.</p>
+          <ol class="logs" id="logList"></ol>
+        </div>
 
         <h2 class="section-title">Backup</h2>
         <div class="backup">
@@ -158,10 +174,20 @@
     </form>
   </div>
 
+  <!-- BOTTOM SHEET: quem é você -->
+  <div class="sheet" id="euSheet" role="dialog" aria-modal="true" aria-labelledby="euTitle" hidden>
+    <div class="sheet-grip"></div>
+    <h2 id="euTitle">🕵️ Quem é você?</h2>
+    <p class="sheet-sub">Pra assinar o registro de alterações. Se alguém mexer nos pontos, o grupo vai saber quem foi.</p>
+    <div class="chips" id="euChips"></div>
+    <button class="btn btn-ghost" id="euAnon" type="button">🥸 Prefiro ficar anônimo</button>
+  </div>
+
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <canvas class="confetti" id="confetti"></canvas>
 
   <script src="data.js"></script>
+  <script src="registro.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
