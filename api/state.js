@@ -8,16 +8,17 @@ const { regras } = require("../data.js");
 const CHAVE = "cna:estado";
 const LIMITE = 3 * 1024 * 1024; // ~3 MB (fotos já chegam reduzidas pra 256px)
 
-// Aceita variáveis com prefixo personalizado (ex: STORAGE_KV_REST_API_URL).
-function env(...sufixos) {
-  for (const s of sufixos) if (process.env[s]) return process.env[s];
-  const chave = Object.keys(process.env).find((k) => sufixos.some((s) => k.endsWith("_" + s)) && process.env[k]);
+// Aceita variáveis com qualquer prefixo escolhido na Vercel
+// (ex: KV_REST_API_URL, STORAGE_REST_API_URL, UPSTASH_REDIS_REST_URL).
+function env(nomes, sufixos) {
+  for (const n of nomes) if (process.env[n]) return process.env[n];
+  const chave = Object.keys(process.env).sort().find((k) => process.env[k] && !/READ_ONLY/.test(k) && sufixos.some((s) => k.endsWith(s)));
   return chave ? process.env[chave] : "";
 }
 
-const REST_URL = env("KV_REST_API_URL", "UPSTASH_REDIS_REST_URL");
-const REST_TOKEN = env("KV_REST_API_TOKEN", "UPSTASH_REDIS_REST_TOKEN");
-const REDIS_URL = env("REDIS_URL", "KV_URL");
+const REST_URL = env(["KV_REST_API_URL", "UPSTASH_REDIS_REST_URL"], ["_REST_API_URL", "_REDIS_REST_URL"]);
+const REST_TOKEN = env(["KV_REST_API_TOKEN", "UPSTASH_REDIS_REST_TOKEN"], ["_REST_API_TOKEN", "_REDIS_REST_TOKEN"]);
+const REDIS_URL = env(["REDIS_URL", "KV_URL"], ["_REDIS_URL"]);
 const TIPO = REST_URL && REST_TOKEN ? "upstash-rest" : REDIS_URL ? "redis-url" : "";
 
 async function rest(comando) {
