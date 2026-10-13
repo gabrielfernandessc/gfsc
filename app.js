@@ -3,8 +3,10 @@
 
   const BASE = window.CNA;
   const CHAVE = "cna-estado-v2";
+  const CHAVE_EU = "cna-eu";
   const API = "/api/state";
   const CORES = ["#ffd60a", "#ff5d8f", "#4cc9f0", "#b388ff", "#5ef38c", "#ff9f1c", "#ff2d3d", "#00f5d4", "#f15bb5", "#9ef01a", "#ffffff", "#7b8cff"];
+  const Registro = window.CNARegistro;
   const regraPorId = Object.fromEntries(BASE.regras.map((r) => [r.id, r]));
 
   const $ = (s, el = document) => el.querySelector(s);
@@ -21,7 +23,8 @@
     return {
       versao: 0,
       jogadores: BASE.jogadores.map((j) => ({ foto: "", ...j })),
-      eventos: []
+      eventos: [],
+      registros: []
     };
   }
 
@@ -49,6 +52,17 @@
           pontos: Number(v.pontos) || 0,
           nota: String(v.nota || "").slice(0, 80),
           ts: Number(v.ts) || Date.now()
+        })),
+      registros: (Array.isArray(e.registros) ? e.registros : [])
+        .filter((g) => g && g.texto)
+        .slice(0, Registro.MAX_REGISTROS)
+        .map((g) => ({
+          id: String(g.id || uid()),
+          ts: Number(g.ts) || 0,
+          autor: String(g.autor || "Anônimo").slice(0, 24),
+          aparelho: String(g.aparelho || "").slice(0, 24),
+          emoji: String(g.emoji || "•").slice(0, 8),
+          texto: String(g.texto).slice(0, 200)
         }))
     };
   }
@@ -63,16 +77,25 @@
 
   let estado = carregarLocal() || estadoInicial();
   let online = false;
+  let motivoOffline = ""; // "sem-banco" (API sem Redis) ou "erro" (sem internet / API fora)
   let enviando = false;
 
-  // Toda alteração passa por aqui: aplica, salva, redesenha e sincroniza.
-  function commit(mutacao) {
+  // Quem está usando este aparelho (vai pro registro de alterações).
+  let eu = "";
+  try { eu = localStorage.getItem(CHAVE_EU) || ""; } catch {}
+  const meuAparelho = Registro.aparelhoDe(navigator.userAgent);
+
+  // Toda alteração passa por aqui: aplica, registra, salva, redesenha e sincroniza.
+  // "motivo" resume alterações em massa (reset, importar) numa linha só no registro.
+  function commit(mutacao, motivo) {
     const anterior = estado.versao;
+    const antes = JSON.parse(JSON.stringify(estado));
     mutacao(estado);
     estado.versao = anterior + 1;
+    estado.registros = Registro.registrar(antes, estado, { autor: eu || "Anônimo", aparelho: meuAparelho, motivo, regras: BASE.regras });
     salvarLocal();
     render();
-    empurrar(anterior);
+    empurrar(anterior, motivo);
   }
 
   // ---------- Sincronização (Vercel + Redis, opcional) ----------
@@ -80,6 +103,7 @@
     if (enviando || sheetAberta()) return;
     try {
       const r = await fetch(API, { cache: "no-store" });
+      if (r.status === 501 || r.status === 404) { online = false; motivoOffline = "sem-banco"; renderModo(); return; }
       if (!r.ok) throw new Error(r.status);
       const d = await r.json();
       online = true;
@@ -93,18 +117,19 @@
       }
     } catch {
       online = false;
+      motivoOffline = "erro";
     }
     renderModo();
   }
 
-  async function empurrar(base) {
+  async function empurrar(base, motivo) {
     if (!online) return;
     enviando = true;
     try {
       const r = await fetch(API, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ base, estado })
+        body: JSON.stringify({ base, estado, autor: eu || "Anônimo", motivo })
       });
       if (r.status === 409) {
         const d = await r.json();
@@ -113,6 +138,11 @@
         toast("Alguém foi mais rápido! ⚡", "O placar foi atualizado por outra pessoa. Confere e tenta de novo.", true);
       } else if (!r.ok) {
         throw new Error(r.status);
+      } else {
+        // O servidor é quem escreve o registro oficial; usa a versão dele.
+        const d = await r.json();
+        const salvo = d && normaliza(d.estado);
+        if (salvo && salvo.versao === estado.versao) { estado.registros = salvo.registros; salvarLocal(); renderHistorico(); }
       }
     } catch {
       toast("Sem conexão com o placar 📡", "Salvei aqui no seu celular por enquanto.", true);
@@ -268,6 +298,34 @@
         <button class="h-del" data-del="${esc(e.id)}" type="button">desfazer</button></div>
       </li>`;
     }).join("") : `<li class="empty"><b>🦗</b>Nenhum anúncio lançado ainda.<br>O placar antigo veio do WhatsApp. Toque no 📣 quando a próxima bomba cair.</li>`;
+
+    const regs = estado.registros || [];
+    $("#logList").innerHTML = regs.length ? regs.map((g) => `
+      <li class="log">
+        <span class="log-emoji">${esc(g.emoji)}</span>
+        <div class="log-body">
+          <div class="log-text"><b>${esc(g.autor)}</b> ${esc(g.texto)}</div>
+          <div class="log-meta">${dataHora(g.ts)}${g.aparelho ? ` · via ${esc(g.aparelho)}` : ""}</div>
+        </div>
+      </li>`).join("") : `<li class="empty"><b>🕵️</b>Nada mudou ainda.<br>Toda alteração de ponto, participante ou foto aparece aqui, com nome e horário.</li>`;
+    $("#logCount").textContent = regs.length ? regs.length : "";
+
+    const ult = regs[0];
+    $("#lastChange").innerHTML = ult
+      ? `<span class="lc-emoji">🕵️</span><span class="lc-text"><b>${esc(ult.autor)}</b> ${esc(ult.texto)} <small>· ${quando(ult.ts)}</small></span><span class="lc-go">ver registro ›</span>`
+      : "";
+    $("#lastChange").hidden = !ult;
+
+    $("#euInfo").innerHTML = `Você está como <b>${esc(eu || "Anônimo")}</b> · <button type="button" class="link" data-eu>trocar</button>`;
+  }
+
+  function dataHora(ts) {
+    if (!ts) return "data desconhecida";
+    const d = new Date(ts);
+    const hoje = new Date();
+    const hora = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    if (d.toDateString() === hoje.toDateString()) return `hoje, ${hora} (${quando(ts)})`;
+    return `${d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: d.getFullYear() === hoje.getFullYear() ? undefined : "numeric" })}, ${hora}`;
   }
 
   function renderTicker(lista) {
@@ -292,9 +350,12 @@
     const el = $("#live");
     el.classList.toggle("is-local", !online);
     el.innerHTML = online ? "<i></i>AO VIVO" : "<i></i>LOCAL";
-    $("#modeNote").innerHTML = online
-      ? "🟢 <b>Placar compartilhado.</b> Tudo que você lança aqui aparece pra galera toda."
-      : "🟡 <b>Modo local.</b> O que você lança fica salvo só neste aparelho. Use o backup pra passar pra alguém.";
+    const local = motivoOffline === "sem-banco"
+      ? "🟡 <b>Modo local: o banco do placar não está configurado na Vercel.</b> Fotos, pontos e participantes ficam só neste aparelho e ninguém mais vê."
+      : "🟡 <b>Sem conexão com o placar.</b> O que você mudar agora fica só neste aparelho até a conexão voltar.";
+    $("#modeNote").innerHTML = online ? "🟢 <b>Placar compartilhado.</b> Tudo que você muda aqui aparece pra galera toda." : local;
+    $("#syncBanner").hidden = online;
+    $("#syncBanner").innerHTML = online ? "" : `<span>⚠️</span><div>${local.replace("🟡 ", "")}</div>`;
   }
 
   // ---------- Sheets ----------
@@ -532,7 +593,7 @@
 
   $("#resetBtn").addEventListener("click", () => {
     if (!confirm("Voltar tudo pro placar oficial? Participantes novos, fotos e anúncios lançados serão apagados" + (online ? " PRA TODO MUNDO." : "."))) return;
-    commit((s) => { const ini = estadoInicial(); s.jogadores = ini.jogadores; s.eventos = ini.eventos; });
+    commit((s) => { const ini = estadoInicial(); s.jogadores = ini.jogadores; s.eventos = ini.eventos; }, "reset");
     toast("Placar resetado ↺", "De volta às origens do WhatsApp.");
   });
 
@@ -553,7 +614,7 @@
       const novo = normaliza(JSON.parse(await file.text()));
       if (!novo) throw new Error();
       if (!confirm(`Importar backup com ${novo.jogadores.length} participantes e ${novo.eventos.length} anúncios? Isso substitui o placar atual.`)) return;
-      commit((s) => { s.jogadores = novo.jogadores; s.eventos = novo.eventos; });
+      commit((s) => { s.jogadores = novo.jogadores; s.eventos = novo.eventos; }, "importar");
       toast("Backup importado 📦", "Placar restaurado.");
     } catch {
       toast("Arquivo inválido 🙅", "Precisa ser um backup exportado por este site.", true);
@@ -574,6 +635,33 @@
       toast("Não consegui copiar 😕", "Tira um print que vale igual.", true);
     }
   });
+
+  // ---------- Quem é você ----------
+  function abrirEu() {
+    $("#euChips").innerHTML = placar().map((j) => `
+      <button type="button" class="chip ${j.nome === eu ? "is-on" : ""}" data-eu-nome="${esc(j.nome)}" style="--c:${corValida(j.cor)}">${avatar(j, "av--sm")}${esc(j.nome)}</button>`).join("");
+    abrirSheet($("#euSheet"));
+  }
+  function definirEu(nome) {
+    eu = String(nome || "").slice(0, 24);
+    try { localStorage.setItem(CHAVE_EU, eu); } catch {}
+    fecharSheet();
+    renderHistorico();
+    toast(eu ? `Beleza, ${eu}! 🕵️` : "Ok, modo anônimo 🥸", "Tudo que você alterar fica no registro, com nome e horário.");
+  }
+  $("#euSheet").addEventListener("click", (e) => {
+    const c = e.target.closest("[data-eu-nome]");
+    if (c) definirEu(c.dataset.euNome);
+    if (e.target.closest("#euAnon")) definirEu("");
+  });
+  document.addEventListener("click", (e) => { if (e.target.closest("[data-eu]")) abrirEu(); });
+
+  function trocarSub(nome) {
+    $$("[data-sub]").forEach((b) => b.classList.toggle("is-on", b.dataset.sub === nome));
+    $$("[data-subview]").forEach((v) => { v.hidden = v.dataset.subview !== nome; });
+  }
+  $$("[data-sub]").forEach((b) => b.addEventListener("click", () => { trocarSub(b.dataset.sub); vibra(6); }));
+  $("#lastChange").addEventListener("click", () => { trocarAba("historico"); trocarSub("registro"); window.scrollTo({ top: 0 }); });
 
   // ---------- Navegação ----------
   function trocarAba(nome) {
@@ -652,6 +740,9 @@
   // ---------- Início ----------
   render();
   puxar();
+  let jaPerguntou = false;
+  try { jaPerguntou = localStorage.getItem(CHAVE_EU) !== null; } catch {}
+  if (!jaPerguntou) setTimeout(() => { if (!sheetAberta()) abrirEu(); }, 900);
   setInterval(() => { if (document.visibilityState === "visible") puxar(); }, 15000);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") puxar(); });
 })();

@@ -1,6 +1,6 @@
-// Placar oficial. Atualize aqui quando o grupo validar novos pontos
-// (o que for lançado pelo site fica salvo só no navegador de quem lançou).
-window.CNA = {
+// Placar oficial e regras. É o ponto de partida do site (e do botão "voltar pro placar oficial").
+// Também é lido pela função da Vercel, que usa os nomes das regras no registro de alterações.
+const CNA = {
   atualizadoEm: "2026-10-13",
 
   jogadores: [
@@ -22,3 +22,6 @@ window.CNA = {
     { id: "previsao",       nome: "Previsão fracassada",  pontos: -2, emoji: "🤡", desc: "Profetizou, errou, pagou. Nostradamus de araque.", penalidade: true }
   ]
 };
+
+if (typeof window !== "undefined") window.CNA = CNA;
+if (typeof module !== "undefined") module.exports = CNA;
