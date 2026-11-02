@@ -10,6 +10,9 @@ Quem avisa primeiro no grupo, pontua. Site mobile-first do placar oficial da tur
 - **Missão especial Faustão** (+6), que só pode ser cumprida uma vez
 - **Previsão fracassada** (-2) com direito a tela tremendo 🤡
 - **Histórico** com "desfazer", **backup** (baixar/importar JSON) e botão **Enviar**, que manda a tabela formatada pro WhatsApp
+- **📡 Radar Irã**: manchetes sobre a guerra do Irã (Google Notícias), com as "grandes" destacadas, aviso de notícias novas e botão "Avisei primeiro no grupo" que já abre o anúncio preenchido
+- **🔔 Notificações sem spam**: cada aparelho escolhe *Desligado*, *Só as grandes* ou *Resumo diário*. O servidor manda **no máximo 1 notificação por dia** por aparelho (por volta das 20h)
+- **📲 App no celular**: dá pra instalar na tela inicial (PWA), com ícone próprio, tela cheia e atalho direto pro Radar
 - **🕵️ Registro de alterações**: toda mudança de ponto, anúncio, participante, foto ou apelido aparece com quem fez, quando e de qual aparelho. No modo compartilhado o registro é gerado pelo servidor, então ninguém apaga nem forja pelo site. Cada aparelho escolhe "quem é você?" na primeira visita
 
 ## Pontuação
@@ -34,6 +37,14 @@ As regras e o placar inicial ficam em [`data.js`](data.js).
    - Com o banco: todo mundo vê o mesmo placar, as mesmas fotos e o mesmo histórico (atualiza sozinho a cada 15 s). O selo no topo mostra **AO VIVO**.
    - Sem o banco: o site funciona em **modo LOCAL**, salvando só no navegador de cada um.
 
+3. **Notificações do Radar Irã:** não precisa configurar nada. As chaves são criadas sozinhas e ficam no Redis. O resumo roda pelo *cron* da Vercel 1x por dia (`vercel.json`, 23h UTC = 20h de Brasília). Opcional: crie a variável `CRON_SECRET` na Vercel pra só ela poder disparar o resumo (mesmo sem isso, ninguém recebe mais de 1 aviso por dia).
+
+## Instalar o app no celular
+
+- **iPhone:** abra o site no **Safari** → **Compartilhar** → **Adicionar à Tela de Início**. As notificações no iPhone só funcionam com o app instalado (iOS 16.4+).
+- **Android:** abra no **Chrome** → menu **⋮** → **Instalar app**.
+- Depois, no app, abra **Radar Irã** e escolha a frequência das notificações.
+
 Pela linha de comando: `npx vercel --prod` (precisa estar logado ou ter `VERCEL_TOKEN`).
 
 > Qualquer pessoa com o link consegue editar o placar. É um grupo de amigos, confiamos (mais ou menos).
@@ -54,6 +65,12 @@ styles.css            visual
 app.js                lógica, animações e sincronização
 data.js               placar oficial e regras
 registro.js           gera o registro de alterações (usado no site e na API)
-api/state.js          função serverless da Vercel (placar compartilhado via Redis)
+sw.js                 service worker (app instalável, offline e notificações)
+manifest.webmanifest  dados do app (nome, ícones, atalho do Radar)
+api/state.js          placar compartilhado via Redis
+api/noticias.js       manchetes do Radar Irã (cache de 10 min na CDN)
+api/push.js           inscrição nas notificações
+api/cron-noticias.js  resumo diário (no máx. 1 notificação por dia por aparelho)
+lib/                  Redis, busca de notícias e envio de push
 vercel.json           config da Vercel
 ```

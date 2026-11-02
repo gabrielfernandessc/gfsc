@@ -2,8 +2,11 @@
   "name": "cna",
   "private": true,
   "description": "Competição Nacional dos Anúncios",
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
-    "redis": "4.7.0"
+    "redis": "4.7.0",
+    "web-push": "3.6.7"
   }
 }
