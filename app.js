@@ -355,6 +355,7 @@
       : "🟡 <b>Sem conexão com o placar.</b> O que você mudar agora fica só neste aparelho até a conexão voltar.";
     $("#modeNote").innerHTML = online ? "🟢 <b>Placar compartilhado.</b> Tudo que você muda aqui aparece pra galera toda." : local;
     $("#syncBanner").hidden = online;
+    if (typeof renderNotif === "function") renderNotif();
     $("#syncBanner").innerHTML = online ? "" : `<span>⚠️</span><div>${local.replace("🟡 ", "")}</div>`;
   }
 
@@ -400,9 +401,9 @@
   const form = $("#announceForm");
   let escolha = { jogador: null, regra: null };
 
-  function abrirAnuncio(jogadorId = null) {
-    escolha = { jogador: jogadorId, regra: null };
-    $("#note").value = "";
+  function abrirAnuncio(jogadorId = null, { regra = null, nota = "" } = {}) {
+    escolha = { jogador: jogadorId, regra };
+    $("#note").value = nota;
     $("#playerChips").innerHTML = placar().map((j) => `
       <button type="button" class="chip" data-p="${esc(j.id)}" style="--c:${corValida(j.cor)}">${avatar(j, "av--sm")}${esc(j.nome)}</button>`).join("");
     const feito = faustao();
@@ -667,6 +668,7 @@
   function trocarAba(nome) {
     $$(".view").forEach((v) => { const on = v.dataset.view === nome; v.hidden = !on; v.classList.toggle("is-active", on); });
     $$(".tab[data-tab]").forEach((t) => t.classList.toggle("is-active", t.dataset.tab === nome));
+    if (nome === "radar") abrirRadar();
   }
   $$(".tab[data-tab]").forEach((t) => t.addEventListener("click", () => { trocarAba(t.dataset.tab); window.scrollTo({ top: 0 }); vibra(6); }));
   $("#fab").addEventListener("click", () => { vibra(15); abrirAnuncio(); });
@@ -737,12 +739,243 @@
     })();
   }
 
+  // ---------- Radar Irã ----------
+  function lerLS(k) { try { return localStorage.getItem(k); } catch { return null; } }
+  function gravarLS(k, v) { try { localStorage.setItem(k, v); } catch {} }
+
+  const CHAVE_RADAR_VISTO = "cna-radar-visto";
+  const CHAVE_NOTIF = "cna-notif-modo";
+  const CHAVE_INSTALL_X = "cna-install-x";
+  let noticias = [];
+  let noticiasEm = 0;
+  let radarErro = false;
+  let radarFiltro = "tudo";
+  let radarLimite = 15;
+  let radarVisto = Number(lerLS(CHAVE_RADAR_VISTO)) || 0; // última vez que a aba foi aberta
+  let radarVistoTela = radarVisto; // o que conta como "novo" enquanto a aba está aberta
+
+  async function carregarNoticias(forcar = false) {
+    if (!forcar && Date.now() - noticiasEm < 5 * 60 * 1000) return;
+    $("#radarRefresh").classList.add("is-spin");
+    try {
+      const r = await fetch("/api/noticias");
+      if (!r.ok) throw new Error(r.status);
+      const d = await r.json();
+      noticias = Array.isArray(d.itens) ? d.itens.filter((n) => n && n.titulo && /^https:\/\//.test(n.link)) : [];
+      noticiasEm = Date.now();
+      radarErro = false;
+    } catch {
+      radarErro = true;
+    }
+    $("#radarRefresh").classList.remove("is-spin");
+    renderRadar();
+  }
+
+  function abrirRadar() {
+    radarVistoTela = radarVisto;
+    radarVisto = Date.now();
+    gravarLS(CHAVE_RADAR_VISTO, String(radarVisto));
+    renderRadar();
+    renderNotif();
+    carregarNoticias();
+  }
+
+  function renderRadar() {
+    const aberta = !$("#view-radar").hidden;
+    const novosDot = noticias.filter((n) => n.ts > radarVisto).length;
+    const dot = $("#radarDot");
+    dot.hidden = aberta || !novosDot;
+    dot.textContent = novosDot > 9 ? "9+" : novosDot;
+
+    const novosTela = noticias.filter((n) => n.ts > radarVistoTela).length;
+    $("#radarMeta").textContent = radarErro && !noticias.length
+      ? "Não consegui buscar as notícias agora. Tenta de novo daqui a pouco."
+      : !noticiasEm ? "Carregando notícias…"
+      : `${noticias.length} manchetes dos últimos 3 dias · atualizado ${quando(noticiasEm)}${radarVistoTela && novosTela ? ` · ${novosTela} novas desde sua última visita` : ""}`;
+
+    const lista = radarFiltro === "grandes" ? noticias.filter((n) => n.grande) : noticias;
+    const resto = lista.length - radarLimite;
+    $("#newsMore").hidden = resto <= 0;
+    $("#newsMore").textContent = `Ver mais ${Math.min(resto, 15)} notícias`;
+    $("#newsList").innerHTML = lista.length ? lista.slice(0, radarLimite).map((n) => {
+      const novo = radarVistoTela && n.ts > radarVistoTela;
+      return `<li class="news-item ${n.grande ? "is-grande" : ""}">
+        <a href="${esc(n.link)}" target="_blank" rel="noopener noreferrer">
+          <div class="news-top">
+            ${novo ? '<span class="tag tag--novo">novo</span>' : ""}
+            ${n.grande ? '<span class="tag tag--grande">🔥 grande</span>' : ""}
+            <span class="news-src">${esc(n.fonte || "Notícia")}</span><span>· ${quando(n.ts)}</span>
+          </div>
+          <div class="news-title">${esc(n.titulo)}</div>
+        </a>
+        <button class="news-claim" type="button" data-claim="${esc(n.id)}">📣 Avisei primeiro no grupo</button>
+      </li>`;
+    }).join("") : noticiasEm ? `<li class="empty"><b>🕊️</b>${radarFiltro === "grandes" ? "Nenhuma notícia grande nos últimos dias." : "Nenhuma manchete encontrada agora."}</li>` : "";
+  }
+
+  $("#newsList").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-claim]");
+    if (!b) return;
+    const n = noticias.find((x) => x.id === b.dataset.claim);
+    if (!n) return;
+    const meu = estado.jogadores.find((j) => j.nome === eu);
+    abrirAnuncio(meu ? meu.id : null, { regra: "evento", nota: n.titulo.slice(0, 80) });
+  });
+  $$("[data-filtro]").forEach((b) => b.addEventListener("click", () => {
+    radarFiltro = b.dataset.filtro;
+    radarLimite = 15;
+    $$("[data-filtro]").forEach((x) => x.classList.toggle("is-on", x === b));
+    renderRadar();
+    vibra(6);
+  }));
+  $("#newsMore").addEventListener("click", () => { radarLimite += 15; renderRadar(); });
+  $("#radarRefresh").addEventListener("click", () => { vibra(8); carregarNoticias(true); });
+
+  // ---------- Notificações (no máximo 1 por dia, decidido no servidor) ----------
+  const suportaPush = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  const ehIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const instalado = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  let modoNotif = lerLS(CHAVE_NOTIF) || "off";
+  let swReg = null;
+  let ativando = false;
+
+  const TEXTO_MODO = {
+    off: "Desligadas. Você só vê as notícias quando abrir o app.",
+    grandes: "Ligadas: só notícia grande, no máximo 1 aviso por dia.",
+    diario: "Ligadas: 1 resumo por dia, por volta das 20h."
+  };
+
+  function renderNotif() {
+    $$("[data-modo]").forEach((b) => { const on = b.dataset.modo === modoNotif; b.classList.toggle("is-on", on); b.setAttribute("aria-checked", on); });
+    $("#notifStatus").textContent = ativando ? "Ativando…" : TEXTO_MODO[modoNotif] || TEXTO_MODO.off;
+    let dica = "";
+    if (!suportaPush && ehIOS && !instalado) dica = `📲 No iPhone, as notificações só funcionam com o app instalado na tela inicial. <button type="button" class="link" data-instalar>Ver como instalar</button>`;
+    else if (!suportaPush) dica = "Este navegador não aceita notificações. O radar continua funcionando quando você abrir o app.";
+    else if (motivoOffline === "sem-banco") dica = "As notificações precisam do placar compartilhado (banco na Vercel) ligado.";
+    else if ("Notification" in window && Notification.permission === "denied") dica = "As notificações deste site estão bloqueadas. Libere nas configurações do navegador ou do celular.";
+    $("#notifHint").innerHTML = dica;
+    $("#notifHint").hidden = !dica;
+  }
+
+  function chaveBytes(b64) {
+    const pad = "=".repeat((4 - (b64.length % 4)) % 4);
+    const bin = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
+    return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  }
+  const mesmaChave = (buf, bytes) => !!buf && new Uint8Array(buf).every((v, i) => v === bytes[i]) && buf.byteLength === bytes.length;
+
+  async function escolherModo(modo) {
+    if (modo === modoNotif || ativando) return;
+    vibra(8);
+    if (modo === "off") {
+      try {
+        const sub = swReg && (await swReg.pushManager.getSubscription());
+        if (sub) {
+          fetch("/api/push", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: sub.endpoint }) }).catch(() => {});
+          await sub.unsubscribe();
+        }
+      } catch {}
+      modoNotif = "off";
+      gravarLS(CHAVE_NOTIF, modoNotif);
+      renderNotif();
+      toast("Notificações desligadas 🔕", "O radar continua aqui quando você abrir o app.");
+      return;
+    }
+    if (!suportaPush) { renderNotif(); if (ehIOS && !instalado) abrirInstalar(); else toast("Sem notificações aqui 😕", "Este navegador não aceita notificações.", true); return; }
+
+    const permissao = await Notification.requestPermission(); // precisa vir direto do toque
+    if (permissao !== "granted") { renderNotif(); toast("Permissão negada 🙅", "Libere as notificações do site nas configurações.", true); return; }
+
+    ativando = true;
+    renderNotif();
+    try {
+      const reg = swReg || (await navigator.serviceWorker.ready);
+      const r1 = await fetch("/api/push");
+      if (!r1.ok) throw new Error(r1.status);
+      const chave = chaveBytes((await r1.json()).publicKey);
+      let sub = await reg.pushManager.getSubscription();
+      if (sub && !mesmaChave(sub.options && sub.options.applicationServerKey, chave)) { await sub.unsubscribe(); sub = null; }
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chave });
+      const primeira = modoNotif === "off";
+      const r2 = await fetch("/api/push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sub: sub.toJSON(), modo, nome: eu, teste: primeira })
+      });
+      if (!r2.ok) throw new Error(r2.status);
+      modoNotif = modo;
+      gravarLS(CHAVE_NOTIF, modoNotif);
+      toast(modo === "diario" ? "Resumo diário ligado 🗞️" : "Alerta de notícia grande ligado 🔥", "No máximo 1 notificação por dia. Prometido.");
+    } catch {
+      toast("Não consegui ativar 😕", "Tenta de novo daqui a pouco.", true);
+    } finally {
+      ativando = false;
+      renderNotif();
+    }
+  }
+  $$("[data-modo]").forEach((b) => b.addEventListener("click", () => escolherModo(b.dataset.modo)));
+
+  // Confere se a inscrição ainda existe (permissão revogada, app reinstalado...) e mantém o nome em dia.
+  async function conferirInscricao() {
+    if (!swReg || !suportaPush) return renderNotif();
+    const sub = await swReg.pushManager.getSubscription().catch(() => null);
+    if (modoNotif !== "off" && (!sub || Notification.permission !== "granted")) {
+      modoNotif = "off";
+      gravarLS(CHAVE_NOTIF, modoNotif);
+    } else if (sub && modoNotif !== "off") {
+      fetch("/api/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sub: sub.toJSON(), modo: modoNotif, nome: eu }) }).catch(() => {});
+    }
+    renderNotif();
+  }
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").then((r) => { swReg = r; conferirInscricao(); }).catch(() => {});
+  }
+
+  // ---------- Instalar app ----------
+  let promptInstalar = null;
+  function renderInstall() { $("#installCard").hidden = instalado || lerLS(CHAVE_INSTALL_X) === "1"; }
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); promptInstalar = e; renderInstall(); });
+  window.addEventListener("appinstalled", () => {
+    promptInstalar = null;
+    gravarLS(CHAVE_INSTALL_X, "1");
+    renderInstall();
+    toast("App instalado 📲", "Agora a CNA mora na sua tela inicial.");
+  });
+
+  function abrirInstalar() {
+    const passos = ehIOS
+      ? ["Abra este site no <b>Safari</b>.", "Toque em <b>Compartilhar</b> (o quadrado com a setinha ⬆️).", "Role e toque em <b>Adicionar à Tela de Início</b>.", "Abra a CNA pelo ícone novo e ative as notificações no Radar Irã."]
+      : /Android/i.test(navigator.userAgent)
+        ? ["Abra este site no <b>Chrome</b>.", "Toque no menu <b>⋮</b> no canto de cima.", "Toque em <b>Instalar app</b> (ou <b>Adicionar à tela inicial</b>).", "Abra a CNA pelo ícone novo."]
+        : ["No Chrome ou Edge, clique no ícone de <b>instalar</b> na barra de endereço.", "Ou abra o site no celular e siga o mesmo caminho por lá."];
+    $("#installSteps").innerHTML = `<ol class="steps">${passos.map((p) => `<li>${p}</li>`).join("")}</ol>`;
+    abrirSheet($("#installSheet"));
+  }
+  $("#installBtn").addEventListener("click", async () => {
+    if (!promptInstalar) return abrirInstalar();
+    promptInstalar.prompt();
+    try { await promptInstalar.userChoice; } catch {}
+    promptInstalar = null;
+  });
+  $("#installClose").addEventListener("click", () => { gravarLS(CHAVE_INSTALL_X, "1"); renderInstall(); });
+  $("#installOk").addEventListener("click", fecharSheet);
+  document.addEventListener("click", (e) => { if (e.target.closest("[data-instalar]")) abrirInstalar(); });
+
+  // Abrir direto no radar (ex: tocando numa notificação)
+  window.addEventListener("hashchange", () => { if (location.hash === "#radar") trocarAba("radar"); });
+
   // ---------- Início ----------
   render();
   puxar();
   let jaPerguntou = false;
   try { jaPerguntou = localStorage.getItem(CHAVE_EU) !== null; } catch {}
   if (!jaPerguntou) setTimeout(() => { if (!sheetAberta()) abrirEu(); }, 900);
+  renderInstall();
+  renderNotif();
+  if (location.hash === "#radar") trocarAba("radar");
+  carregarNoticias();
   setInterval(() => { if (document.visibilityState === "visible") puxar(); }, 15000);
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") puxar(); });
+  setInterval(() => { if (document.visibilityState === "visible") carregarNoticias(); }, 10 * 60 * 1000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { puxar(); carregarNoticias(); } });
 })();

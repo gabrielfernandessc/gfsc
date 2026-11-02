@@ -9,6 +9,8 @@
   <meta name="description" content="Competição Nacional dos Anúncios: quem avisa primeiro no grupo, pontua.">
   <title>CNA · Competição Nacional dos Anúncios</title>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-title" content="CNA">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,7 +24,10 @@
         <span class="brand-mark">CNA</span>
         <span class="brand-sub">Competição Nacional<br>dos Anúncios</span>
       </div>
-      <button class="live" id="live" type="button"><i></i>AO VIVO</button>
+      <div class="top-actions">
+        <button class="icon-btn" id="shareBtn" type="button" aria-label="Enviar tabela pro grupo">📤</button>
+        <button class="live" id="live" type="button"><i></i>AO VIVO</button>
+      </div>
     </header>
 
     <div class="ticker" aria-hidden="true">
@@ -37,6 +42,13 @@
           <p class="kicker">Temporada eterna · Edição WhatsApp</p>
           <h1>Quem avisa<br>primeiro, <span class="hl">pontua.</span></h1>
           <p class="hero-sub">O único campeonato onde a notícia ruim é uma ótima notícia.</p>
+        </div>
+
+        <div class="install-card" id="installCard" hidden>
+          <span class="install-icon"><img src="icon-192.png" alt=""></span>
+          <div><b>Instale o app da CNA</b><small>Ícone na tela inicial, tela cheia e notificações do Radar Irã.</small></div>
+          <button class="btn-mini" id="installBtn" type="button">Instalar</button>
+          <button class="install-x" id="installClose" type="button" aria-label="Fechar">✕</button>
         </div>
 
         <div class="sync-banner" id="syncBanner" hidden></div>
@@ -107,6 +119,39 @@
 
         <footer class="credits">Nenhum famoso foi prejudicado na produção deste site.<br>Ainda. 👀</footer>
       </section>
+      <!-- RADAR IRÃ -->
+      <section class="view" id="view-radar" data-view="radar" hidden>
+        <div class="hero hero--small">
+          <p class="kicker">Monitoramento especial</p>
+          <h1>Radar <span class="hl">Irã</span></h1>
+          <p class="hero-sub">Manchetes sobre a guerra do Irã, atualizadas sozinhas. Viu primeiro? Anuncia no grupo e garante o ponto.</p>
+        </div>
+
+        <div class="notif-card">
+          <div class="notif-head">
+            <span>🔔</span>
+            <div><b>Notificações</b><small id="notifStatus">Desligadas. Você só vê as notícias quando abrir o app.</small></div>
+          </div>
+          <div class="notif-modes" role="radiogroup" aria-label="Frequência das notificações">
+            <button type="button" data-modo="off" role="radio"><span>🔕</span><b>Desligado</b><small>Só quando eu abrir</small></button>
+            <button type="button" data-modo="grandes" role="radio"><span>🔥</span><b>Só as grandes</b><small>No máx. 1 por dia</small></button>
+            <button type="button" data-modo="diario" role="radio"><span>🗞️</span><b>Resumo diário</b><small>1 por dia, às 20h</small></button>
+          </div>
+          <p class="notif-hint" id="notifHint" hidden></p>
+        </div>
+
+        <div class="radar-bar">
+          <div class="segmented segmented--sm" role="tablist">
+            <button type="button" class="is-on" data-filtro="tudo">Tudo</button>
+            <button type="button" data-filtro="grandes">🔥 Só grandes</button>
+          </div>
+          <button class="icon-btn" id="radarRefresh" type="button" aria-label="Atualizar notícias">↻</button>
+        </div>
+        <p class="radar-meta" id="radarMeta">Carregando notícias…</p>
+        <ol class="news" id="newsList"></ol>
+        <button class="btn btn-ghost news-more" id="newsMore" type="button" hidden>Ver mais</button>
+        <p class="radar-source">Fonte: Google Notícias. Os links abrem o site de cada jornal.</p>
+      </section>
     </main>
 
     <nav class="tabbar" aria-label="Navegação">
@@ -114,7 +159,7 @@
       <button class="tab" data-tab="regras" type="button"><span>📋</span>Regras</button>
       <button class="fab" id="fab" type="button" aria-label="Anunciar notícia"><span>📣</span></button>
       <button class="tab" data-tab="historico" type="button"><span>🗂️</span>Histórico</button>
-      <button class="tab" id="shareBtn" type="button"><span>📤</span>Enviar</button>
+      <button class="tab" data-tab="radar" type="button"><span>📡</span>Radar Irã<b class="tab-dot" id="radarDot" hidden></b></button>
     </nav>
   </div>
 
@@ -181,6 +226,14 @@
     <p class="sheet-sub">Pra assinar o registro de alterações. Se alguém mexer nos pontos, o grupo vai saber quem foi.</p>
     <div class="chips" id="euChips"></div>
     <button class="btn btn-ghost" id="euAnon" type="button">🥸 Prefiro ficar anônimo</button>
+  </div>
+
+  <!-- BOTTOM SHEET: instalar app -->
+  <div class="sheet" id="installSheet" role="dialog" aria-modal="true" aria-labelledby="installTitle" hidden>
+    <div class="sheet-grip"></div>
+    <h2 id="installTitle">📲 Instalar o app</h2>
+    <div id="installSteps"></div>
+    <button class="btn btn-primary" id="installOk" type="button">Entendi</button>
   </div>
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
