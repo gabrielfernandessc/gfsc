@@ -594,6 +594,11 @@ main { padding: 0 16px; }
 .tag { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 999px; }
 .tag--novo { background: var(--yellow); color: #111; }
 .tag--grande { background: rgba(255, 45, 61, 0.2); color: #ff7c87; }
+.news-orig { margin-top: 8px; font-size: 13px; line-height: 1.4; color: var(--muted); font-style: italic; }
+.news-actions { display: flex; border-top: 1px dashed var(--line); }
+.news-actions .news-claim { border-top: 0; }
+.news-orig-btn { flex: none; width: auto !important; padding: 10px 14px !important; border-left: 1px dashed var(--line) !important; font-weight: 500 !important; }
+.segmented--sm { grid-template-columns: repeat(3, 1fr); }
 .news-claim {
   width: 100%; border: 0; border-top: 1px dashed var(--line);
   background: none; color: var(--muted);

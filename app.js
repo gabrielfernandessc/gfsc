@@ -749,7 +749,18 @@
   let noticias = [];
   let noticiasEm = 0;
   let radarErro = false;
-  let radarFiltro = "tudo";
+  let radarFiltro = "mundo";
+  const origemDe = (n) => (n.origem === "mundo" ? "mundo" : "brasil");
+  const FILTROS = {
+    mundo: (n) => origemDe(n) === "mundo",
+    brasil: (n) => origemDe(n) === "brasil",
+    grandes: (n) => n.grande
+  };
+  const VAZIO = {
+    mundo: "Nenhuma manchete internacional agora.",
+    brasil: "Nenhuma manchete da imprensa brasileira agora.",
+    grandes: "Nenhuma notícia grande nos últimos dias."
+  };
   let radarLimite = 15;
   let radarVisto = Number(lerLS(CHAVE_RADAR_VISTO)) || 0; // última vez que a aba foi aberta
   let radarVistoTela = radarVisto; // o que conta como "novo" enquanto a aba está aberta
@@ -791,9 +802,9 @@
     $("#radarMeta").textContent = radarErro && !noticias.length
       ? "Não consegui buscar as notícias agora. Tenta de novo daqui a pouco."
       : !noticiasEm ? "Carregando notícias…"
-      : `${noticias.length} manchetes dos últimos 3 dias · atualizado ${quando(noticiasEm)}${radarVistoTela && novosTela ? ` · ${novosTela} novas desde sua última visita` : ""}`;
+      : `${noticias.filter(FILTROS.mundo).length} internacionais (traduzidas) e ${noticias.filter(FILTROS.brasil).length} brasileiras dos últimos 3 dias · atualizado ${quando(noticiasEm)}${radarVistoTela && novosTela ? ` · ${novosTela} novas desde sua última visita` : ""}`;
 
-    const lista = radarFiltro === "grandes" ? noticias.filter((n) => n.grande) : noticias;
+    const lista = noticias.filter(FILTROS[radarFiltro] || FILTROS.mundo);
     const resto = lista.length - radarLimite;
     $("#newsMore").hidden = resto <= 0;
     $("#newsMore").textContent = `Ver mais ${Math.min(resto, 15)} notícias`;
@@ -804,16 +815,27 @@
           <div class="news-top">
             ${novo ? '<span class="tag tag--novo">novo</span>' : ""}
             ${n.grande ? '<span class="tag tag--grande">🔥 grande</span>' : ""}
-            <span class="news-src">${esc(n.fonte || "Notícia")}</span><span>· ${quando(n.ts)}</span>
+            <span class="news-src">${origemDe(n) === "mundo" ? "🌍" : "🇧🇷"} ${esc(n.fonte || "Notícia")}</span><span>· ${quando(n.ts)}</span>
           </div>
           <div class="news-title">${esc(n.titulo)}</div>
+          ${n.original && n.original !== n.titulo ? `<div class="news-orig" hidden>🇬🇧 ${esc(n.original)}</div>` : ""}
         </a>
-        <button class="news-claim" type="button" data-claim="${esc(n.id)}">📣 Avisei primeiro no grupo</button>
+        <div class="news-actions">
+          <button class="news-claim" type="button" data-claim="${esc(n.id)}">📣 Avisei primeiro no grupo</button>
+          ${n.original && n.original !== n.titulo ? '<button class="news-claim news-orig-btn" type="button" data-orig>Ver original</button>' : ""}
+        </div>
       </li>`;
-    }).join("") : noticiasEm ? `<li class="empty"><b>🕊️</b>${radarFiltro === "grandes" ? "Nenhuma notícia grande nos últimos dias." : "Nenhuma manchete encontrada agora."}</li>` : "";
+    }).join("") : noticiasEm ? `<li class="empty"><b>🕊️</b>${VAZIO[radarFiltro]}</li>` : "";
   }
 
   $("#newsList").addEventListener("click", (e) => {
+    const o = e.target.closest("[data-orig]");
+    if (o) {
+      const orig = $(".news-orig", o.closest(".news-item"));
+      orig.hidden = !orig.hidden;
+      o.textContent = orig.hidden ? "Ver original" : "Esconder original";
+      return;
+    }
     const b = e.target.closest("[data-claim]");
     if (!b) return;
     const n = noticias.find((x) => x.id === b.dataset.claim);

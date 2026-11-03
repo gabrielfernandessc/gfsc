@@ -10,7 +10,7 @@ Quem avisa primeiro no grupo, pontua. Site mobile-first do placar oficial da tur
 - **Missão especial Faustão** (+6), que só pode ser cumprida uma vez
 - **Previsão fracassada** (-2) com direito a tela tremendo 🤡
 - **Histórico** com "desfazer", **backup** (baixar/importar JSON) e botão **Enviar**, que manda a tabela formatada pro WhatsApp
-- **📡 Radar Irã**: manchetes sobre a guerra do Irã (Google Notícias), com as "grandes" destacadas, aviso de notícias novas e botão "Avisei primeiro no grupo" que já abre o anúncio preenchido
+- **📡 Radar Irã**: manchetes sobre a guerra do Irã da imprensa internacional (Reuters, AP, BBC, Al Jazeera, Guardian, NYT, Bloomberg, FT, France 24, DW, CNN, WSJ, Axios), **traduzidas automaticamente** pro português (com "ver original"), e da imprensa brasileira, com as "grandes" destacadas, aviso de notícias novas e botão "Avisei primeiro no grupo" que já abre o anúncio preenchido
 - **🔔 Notificações sem spam**: cada aparelho escolhe *Desligado*, *Só as grandes* ou *Resumo diário*. O servidor manda **no máximo 1 notificação por dia** por aparelho (por volta das 20h)
 - **📲 App no celular**: dá pra instalar na tela inicial (PWA), com ícone próprio, tela cheia e atalho direto pro Radar
 - **🕵️ Registro de alterações**: toda mudança de ponto, anúncio, participante, foto ou apelido aparece com quem fez, quando e de qual aparelho. No modo compartilhado o registro é gerado pelo servidor, então ninguém apaga nem forja pelo site. Cada aparelho escolhe "quem é você?" na primeira visita
@@ -71,6 +71,6 @@ api/state.js          placar compartilhado via Redis
 api/noticias.js       manchetes do Radar Irã (cache de 10 min na CDN)
 api/push.js           inscrição nas notificações
 api/cron-noticias.js  resumo diário (no máx. 1 notificação por dia por aparelho)
-lib/                  Redis, busca de notícias e envio de push
+lib/                  Redis, busca e tradução de notícias, envio de push
 vercel.json           config da Vercel
 ```
