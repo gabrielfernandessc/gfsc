@@ -32,7 +32,8 @@ module.exports = async (req, res) => {
       const lista = s.modo === "grandes" ? grandes : novos;
       if (!lista.length) { resumo.pulados++; await push.salvarInscrito(s.id, { ...s, ultimoVisto: agora }); continue; }
 
-      const destaque = grandes[0] || lista[0];
+      const mundo = (i) => i.origem === "mundo";
+      const destaque = grandes.find(mundo) || grandes[0] || lista.find(mundo) || lista[0];
       const payload = s.modo === "grandes"
         ? { title: "🔥 Radar Irã: notícia grande", body: destaque.titulo + (lista.length > 1 ? ` (+${lista.length - 1} outras)` : ""), url: "/#radar" }
         : { title: "🇮🇷 Radar Irã: resumo do dia", body: `${lista.length} notícia${lista.length > 1 ? "s" : ""} nova${lista.length > 1 ? "s" : ""}. Destaque: ${destaque.titulo}`, url: "/#radar" };
